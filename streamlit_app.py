@@ -42,16 +42,8 @@ def main():
     st.subheader('OpenAI API Keys')
     api_key_1 = st.text_input('Insérer la première clé API OpenAI', type='password')
     api_key_2 = st.text_input('Insérer la deuxième clé API OpenAI', type='password')
-    api_key_3 = st.text_input('Insérer la troisième clé API OpenAI', type='password')
-    api_key_4 = st.text_input('Insérer la quatrième clé API OpenAI', type='password')
-    api_key_5 = st.text_input('Insérer la cinquième clé API OpenAI', type='password')
-    api_key_6 = st.text_input('Insérer la sixième clé API OpenAI', type='password')
-    api_key_7 = st.text_input('Insérer la septième clé API OpenAI', type='password')
-    api_key_8 = st.text_input('Insérer la huitième clé API OpenAI', type='password')
-    api_key_9 = st.text_input('Insérer la neuvième clé API OpenAI', type='password')
-    api_key_10 = st.text_input('Insérer la dixième clé API OpenAI', type='password')
 
-    api_keys = [api_key_1, api_key_2, api_key_3, api_key_4, api_key_5, api_key_6, api_key_7, api_key_8, api_key_9, api_key_10]
+    api_keys = [api_key_1, api_key_2]
     api_key_cycle = cycle(api_keys)
 
     if csv_file and all(api_keys):
