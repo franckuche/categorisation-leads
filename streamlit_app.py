@@ -23,10 +23,11 @@ def main():
     st.title('Scraping et catégorisation des sites web')
 
     csv_file = st.file_uploader('Importez votre CSV', type=['csv'])
+    api_keys = st.text_input('Insérer les API Keys d’OpenAI, séparées par une virgule', type="password")
 
-    if csv_file:
+    if csv_file and api_keys:
         data = pd.read_csv(csv_file)
-        api_keys = st.text_input('Insérer les API Keys d’OpenAI, séparées par une virgule').split(',')
+        api_keys = api_keys.split(',')
         api_key_cycle = cycle(api_keys)
         data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
         data['catégorisation du site'] = data.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
