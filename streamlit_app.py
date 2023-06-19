@@ -5,9 +5,8 @@ from bs4 import BeautifulSoup
 import openai
 from itertools import cycle
 import base64
-import concurrent.futures
 
-@st.cache
+@st.cache(show_spinner=False)
 def get_homepage_content(url):
     url = 'http://' + url if 'http://' not in url else url
 
@@ -20,7 +19,7 @@ def get_homepage_content(url):
 
 def categorize_site(domain, homepage_content, api_key):
     if homepage_content == "site n'existe plus":
-        return "site n'existe plus"   
+        return "site n'existe plus"    
     openai.api_key = api_key
 
     prompt_text = f"Tu es un spécialiste du marketing de marque. Pour un client, tu dois trouver à partir du texte de la home page et de ta connaissance du nom de marque à quel secteur d’activité il appartient. Tu peux choisir un à deux secteurs d’activité maximum. Si tu en choisi deux, sépare les avec une barre comme celle-ci : / Si tu ne sais pas ou que tu as un doute, mets “Autres”. Tu ne dois pas ajouter de commentaire, de rédaction ou autre, uniquement le ou les secteurs d’activités que tu as choisi. Voici les secteurs d’activité que tu dois choisir : Alimentaire Animaux Art et culture Associations Automobile B2B Banque / Assurance Cosmétique Divertissement Energie Gaming High Tech Home Immobilier Luxe Prêt-à-porter Retail Restauration Sport équipement Travel. Voici le nom du site : {domain}. Voici le texte de la home page : {content}"
@@ -57,10 +56,8 @@ def main():
 
     if csv_file and all(api_keys):
         data = pd.read_csv(csv_file)
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            data['contenu home page'] = list(executor.map(get_homepage_content, data['domaine du site']))
-            data['catégorisation du site'] = list(executor.map(categorize_site, data['domaine du site'], data['contenu home page'], api_key_cycle))
+        data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
+        data['catégorisation du site'] = data.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
 
         st.dataframe(data)
         st.markdown(get_table_download_link(data), unsafe_allow_html=True)
