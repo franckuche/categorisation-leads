@@ -6,9 +6,11 @@ import openai
 from itertools import cycle
 
 def get_homepage_content(url):
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'http://' + url
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    return soup.text
+    return soup.text[:5000]
 
 def categorize_site(domain, content, api_key):
     openai.api_key = api_key
