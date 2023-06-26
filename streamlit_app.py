@@ -50,7 +50,7 @@ def get_marketing_words(homepage_content, api_key):
         return "site n'existe plus"
     openai.api_key = api_key
 
-    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu me catégories la home page en fonction du métier qui est le plus proche du contenu. Tu devras toujours donné ta réponse au masculin. Par exemple, si tu as un contenu lié au métier de professeur, tu dois dire professeur et non professeure tu m'expliques avec une phrase de 3 ou 4 mots maximum l'activité de l'entreprise. Voici le contenus de la homepage : {homepage_content}. Quel est le type de métier relier à cette page ? Donne moi ta réponse en 2-3 mots maximum"
+    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu me catégories la home page en fonction du métier qui est le plus proche du contenu. Tu devras toujours donné ta réponse au masculin. Par exemple, si tu as un contenu lié au métier de professeur, tu dois dire professeur et non professeure tu m'expliques avec une phrase de 3 ou 4 mots maximum l'activité de l'entreprise. Voici le contenus de la homepage : {homepage_content}. Quel est le type de métier relier à cette page ? Donne moi ta réponse en 2-3 mots maximum. Ne met jamais de ponctuation"
     
     messages = [{"role": "system", "content": prompt_text}]
     chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
