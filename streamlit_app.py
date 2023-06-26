@@ -78,7 +78,17 @@ def main():
     if all(api_keys):
         data = pd.DataFrame()
         if csv_file:
-            data = pd.read_csv(csv_file)
+            try:
+                data = pd.read_csv(csv_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                try:
+                    data = pd.read_csv(csv_file, encoding='latin-1') # ou une autre encodage qui pourrait être utilisé
+                    data.to_csv(csv_file, encoding='utf-8', index=False)
+                    data = pd.read_csv(csv_file, encoding='utf-8')
+                except Exception as e:
+                    st.error(f"Impossible de lire le fichier CSV : {e}")
+                    return
+
         if domains:
             domains_data = pd.DataFrame(domains, columns=['domaine du site'])
             data = pd.concat([data, domains_data], ignore_index=True)
