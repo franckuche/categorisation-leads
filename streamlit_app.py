@@ -22,7 +22,7 @@ def categorize_site(domain, homepage_content, api_key):
         return "site n'existe plus"    
     openai.api_key = api_key
 
-    prompt_text = f"Tu es un spécialiste du marketing de marque. Pour un client, tu dois trouver à partir du texte de la home page et de ta connaissance du nom de marque à quel secteur d’activité il appartient. Tu peux choisir un à deux secteurs d’activité maximum. Si tu en choisi deux, sépare les avec une barre comme celle-ci : / Si tu ne sais pas ou que tu as un doute, mets “Autres”. Tu ne dois pas ajouter de commentaire, de rédaction ou autre, uniquement le ou les secteurs d’activités que tu as choisi. Voici les secteurs d’activité que tu dois choisir : Alimentaire Animaux Art et culture Associations Automobile B2B Banque / Assurance Cosmétique Divertissement Energie Gaming High Tech Home Immobilier Luxe Prêt-à-porter Retail Restauration Sport équipement Travel. Voici le nom du site : {domain}. Voici le texte de la home page : {content}"
+    prompt_text = f"Tu es un spécialiste du marketing de marque. Pour un client, tu dois trouver à partir du texte de la home page et de ta connaissance du nom de marque à quel secteur d’activité il appartient. Tu peux choisir un à deux secteurs d’activité maximum. Si tu en choisi deux, sépare les avec une barre comme celle-ci : / Si tu ne sais pas ou que tu as un doute, mets “Autres”. Tu ne dois pas ajouter de commentaire, de rédaction ou autre, uniquement le ou les secteurs d’activités que tu as choisi. Voici les secteurs d’activité que tu dois choisir : Alimentaire Animaux Art et culture Associations Automobile B2B Banque / Assurance Cosmétique Divertissement Energie Gaming High Tech Home Immobilier Luxe Prêt-à-porter Retail Restauration Sport équipement Travel. Voici le nom du site : {domain}. Voici le texte de la home page : {homepage_content}"
 
     messages = [{"role": "system", "content": prompt_text}]
     chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
@@ -47,18 +47,22 @@ def main():
     api_key_cycle = cycle(api_keys)
 
     # Formulaire pour les mots clés
-    st.subheader('Formulaire pour les mots clés')
-    with st.form(key='keywords_form'):
-        keywords_input = st.text_input('Saisissez des mots clés (séparés par des virgules)')
+    st.subheader('Formulaire pour les domaines')
+    with st.form(key='domain_form'):
+        domain_input = st.text_input('Saisissez des domaines (séparés par des virgules)')
         submit_button = st.form_submit_button(label='Soumettre')
-    keywords = [k.strip() for k in keywords_input.split(',')] if keywords_input else []
+    domains = [d.strip() for d in domain_input.split(',')] if domain_input else []
 
-    if csv_file and all(api_keys):
-        data = pd.read_csv(csv_file)
+    if all(api_keys):
+        data = pd.DataFrame()
+        if csv_file:
+            data = pd.read_csv(csv_file)
+        if domains:
+            domains_data = pd.DataFrame(domains, columns=['domaine du site'])
+            data = pd.concat([data, domains_data], ignore_index=True)
+
         data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
         data['catégorisation du site'] = data.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
-
-        # Ici, vous pouvez ajouter le code pour utiliser les mots clés
 
         st.dataframe(data)
         st.markdown(get_table_download_link(data), unsafe_allow_html=True)
