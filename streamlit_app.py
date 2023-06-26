@@ -8,7 +8,7 @@ import base64
 
 @st.cache(show_spinner=False)
 def get_homepage_content(url):
-    url = 'http://' + url if 'http://' not in url else url
+    url = 'http://' + url if 'http://' not in url and 'https://' not in url else url
 
     try:
         response = requests.get(url)
@@ -45,11 +45,23 @@ def get_table_download_link(df):
     href = f'<a href="data:file/csv;base64,{b64}" download="output.csv">Télécharger le CSV</a>'
     return href
 
+def get_marketing_words(homepage_content, api_key):
+    if homepage_content == "site n'existe plus":
+        return "site n'existe plus"
+    openai.api_key = api_key
+
+    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu m'expliques avec une phrase de 4 ou 5 mots l'activité de l'entreprise. L'activité que tu vas dire ne doit pas être trop macro mais vraiment spécifique à l'entreprise. Par exemple, quelqu'un qui vend des chaussures n'est pas retailers mais spécialiste en 'vente de chaussures'. Ta réponse ne doit contenir uniquement les quelques mots, tu ne peux donc pas faire de commentaires. Cependant, il faut pouvoir mettre ces mots avant 'vous êtes'. Voici le contenus de la homepage : {homepage_content}"
+
+    messages = [{"role": "system", "content": prompt_text}]
+    chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
+    return chat.choices[0].message.content
+
+
 def main():
     st.title('Scraping et catégorisation des sites web')
 
     csv_file = st.file_uploader('Importez votre CSV', type=['csv'])
-    
+
     st.subheader('OpenAI API Keys')
     api_key_1 = st.text_input('Insérer la première clé API OpenAI', type='password')
     api_key_2 = st.text_input('Insérer la deuxième clé API OpenAI', type='password')
@@ -57,7 +69,6 @@ def main():
     api_keys = [api_key_1, api_key_2]
     api_key_cycle = cycle(api_keys)
 
-    # Formulaire pour les mots clés
     st.subheader('Formulaire pour les domaines')
     with st.form(key='domain_form'):
         domain_input = st.text_input('Saisissez des domaines (séparés par des virgules)')
@@ -75,6 +86,7 @@ def main():
         data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
         data['catégorisation du site'] = data.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
         data['Business target'] = data['contenu home page'].apply(lambda x: identify_client_type(x, next(api_key_cycle)))
+        data['Marketing words'] = data['contenu home page'].apply(lambda x: get_marketing_words(x, next(api_key_cycle)))
 
         st.dataframe(data)
         st.markdown(get_table_download_link(data), unsafe_allow_html=True)
