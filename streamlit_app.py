@@ -50,8 +50,8 @@ def get_marketing_words(homepage_content, api_key):
         return "site n'existe plus"
     openai.api_key = api_key
 
-    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu m'expliques avec une phrase de 4 ou 5 mots l'activité de l'entreprise. L'activité que tu vas dire ne doit pas être trop macro mais vraiment spécifique à l'entreprise. Par exemple, quelqu'un qui vend des chaussures n'est pas retailers mais spécialiste en 'vente de chaussures'. Ta réponse ne doit contenir uniquement les quelques mots, tu ne peux donc pas faire de commentaires. Cependant, il faut pouvoir mettre ces mots avant 'vous êtes'. Voici le contenus de la homepage : {homepage_content}"
-
+    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu me catégories la home page en fonction du métier qui est le plus proche du contenu. Tu devras toujours donné ta réponse au masculin. Par exemple, si tu as un contenu lié au métier de professeur, tu dois dire professeur et non professeure tu m'expliques avec une phrase de 4 ou 5 mots l'activité de l'entreprise. Voici le contenus de la homepage : {homepage_content}. Quel est le type de métier à cet home ? Donne moi ta réponse en 3-4 mots maximum"
+    
     messages = [{"role": "system", "content": prompt_text}]
     chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
     return chat.choices[0].message.content
