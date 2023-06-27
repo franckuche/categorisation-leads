@@ -12,65 +12,82 @@ def get_homepage_content(url):
     url = 'http://' + url if 'http://' not in url and 'https://' not in url else url
     try:
         response = requests.get(url)
+        response.raise_for_status() 
         soup = BeautifulSoup(response.text, 'html.parser')
-        return soup.get_text(strip=True)[:5000]  # on limite à 5000 caractères
-    except:
-        return "site n'existe plus"
+        return soup.get_text(strip=True)[:5000]
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error retrieving website content: {e}")
+        return "site does not exist"
+    except Exception as e:
+        st.error(f"Unexpected error: {e}")
+        return "site does not exist"
 
 def categorize_site(domain, home_page_content, api_key):
-    openai.api_key = api_key
-
-    response = openai.Classification.create(
-        search_model="davinci",
-        documents=["E-commerce", "Portfolio", "Educational", "News or Magazine", "Community Forum", "Nonprofit", "Entertainment", "Technology", "Personal Blog", "Web Portal", "Wiki or Knowledge", "Social Media", "Business Brochure"],
-        query=home_page_content,
-    )
-
-    return response['choices'][0]['label']
+    try:
+        openai.api_key = api_key
+        response = openai.Classification.create(
+            search_model="davinci",
+            documents=["E-commerce", "Portfolio", "Educational", "News or Magazine", "Community Forum", "Nonprofit", "Entertainment", "Technology", "Personal Blog", "Web Portal", "Wiki or Knowledge", "Social Media", "Business Brochure"],
+            query=home_page_content,
+        )
+        return response['choices'][0]['label']
+    except Exception as e:
+        st.error(f"Error categorizing site: {e}")
+        return "error in categorizing"
 
 def identify_client_type(home_page_content, api_key):
-    openai.api_key = api_key
-
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": home_page_content},
-    ]
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=messages,
-    )
-
-    return response['choices'][0]['message']['content']
+    try:
+        openai.api_key = api_key
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": home_page_content},
+        ]
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=messages,
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        st.error(f"Error identifying client type: {e}")
+        return "error in identifying client type"
 
 def get_marketing_words(home_page_content, api_key):
-    openai.api_key = api_key
-
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": home_page_content},
-    ]
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=messages,
-    )
-
-    return response['choices'][0]['message']['content']
+    try:
+        openai.api_key = api_key
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": home_page_content},
+        ]
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=messages,
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        st.error(f"Error getting marketing words: {e}")
+        return "error in getting marketing words"
 
 def get_table_download_link(df):
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-    href = f'<a href="data:file/csv;base64,{b64}">Download csv file</a>'
-    return href
+    try:
+        csv = df.to_csv(index=False)
+        b64 = base64.b64encode(csv.encode()).decode()
+        href = f'<a href="data:file/csv;base64,{b64}">Download csv file</a>'
+        return href
+    except Exception as e:
+        st.error(f"Error preparing download link: {e}")
+        return ""
 
 def process_in_batches(df, func, api_key_cycle, batch_size, pause):
     results = []
     for i in range(0, len(df), batch_size):
         batch = df[i:i+batch_size]
-        batch_results = func(batch, api_key_cycle)
-        results.extend(batch_results)
-        time.sleep(pause)
+        try:
+            batch_results = func(batch, api_key_cycle)
+            results.extend(batch_results)
+            time.sleep(pause)
+        except Exception as e:
+            st.error(f"Error processing in batches: {e}")
+            results.extend(["error in processing"]*len(batch))
     return results
 
 def categorize_batch(batch, api_key_cycle):
@@ -107,9 +124,9 @@ def main():
         elif domains:
             data = pd.DataFrame(domains, columns=['domaine du site'])
 
-        rate_limit = 18  # limiter à 18 requêtes par minute
+        rate_limit = 18  
         batch_size = rate_limit
-        pause_time = 60  # pause de 60 secondes
+        pause_time = 60  
 
         data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
         data['catégorisation du site'] = process_in_batches(data, categorize_batch, api_key_cycle, batch_size, pause_time)
