@@ -13,6 +13,7 @@ def get_homepage_content(url):
         if not isinstance(url, str) or url == "":
             return "L'URL n'est pas valide"
         url = 'http://' + url if 'http://' not in url and 'https://' not in url else url
+
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
         return soup.get_text(strip=True)[:5000]
@@ -36,6 +37,7 @@ def identify_client_type(homepage_content, api_key):
         if homepage_content == "site n'existe plus":
             return "site n'existe plus"
         openai.api_key = api_key
+
         prompt_text = f"Tu es un expert du domaine du marketing. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celui-ci, je souhaite que tu me choisisse l’un de ces termes : B to B (c’est à dire business to business), B to C (c’est à dire business to customers), B to B to C (c’est à dire des entreprises qui commercialisent des biens et des services auprès de sociétés tierces, qui les revendent elles-mêmes au grand public). Tu peux choisir un seul de ces 3 termes. Tu n’a pas le droit d’ajouter des commentaires, fait juste un choix entre : B to B, B to C et B to B to C. Voici le contenus de la homepage : {homepage_content}"
         messages = [{"role": "system", "content": prompt_text}]
         chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
@@ -57,7 +59,9 @@ def get_marketing_words(homepage_content, api_key):
         if homepage_content == "site n'existe plus":
             return "site n'existe plus"
         openai.api_key = api_key
+
         prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu me catégories la home page en fonction du métier qui est le plus proche du contenu. Tu devras toujours donné ta réponse au masculin. Par exemple, si tu as un contenu lié au métier de professeur, tu dois dire professeur et non professeure tu m'expliques avec une phrase de 3 ou 4 mots maximum l'activité de l'entreprise. Voici le contenus de la homepage : {homepage_content}. Quel est le type de métier relier à cette page ? Donne moi ta réponse en 2-3 mots maximum. Ne met jamais de ponctuation"
+    
         messages = [{"role": "system", "content": prompt_text}]
         chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
         return chat.choices[0].message.content
@@ -67,17 +71,22 @@ def get_marketing_words(homepage_content, api_key):
 def main():
     try:
         st.title('Scraping et catégorisation des sites web')
+
         csv_file = st.file_uploader('Importez votre CSV', type=['csv'])
+
         st.subheader('OpenAI API Keys')
         api_key_1 = st.text_input('Insérer la première clé API OpenAI', type='password')
         api_key_2 = st.text_input('Insérer la deuxième clé API OpenAI', type='password')
+
         api_keys = [api_key_1, api_key_2]
         api_key_cycle = cycle(api_keys)
+
         st.subheader('Formulaire pour les domaines')
         with st.form(key='domain_form'):
             domain_input = st.text_input('Saisissez des domaines (séparés par des virgules)')
             submit_button = st.form_submit_button(label='Soumettre')
         domains = [d.strip() for d in domain_input.split(',')] if domain_input else []
+
         if all(api_keys) and (csv_file or domains):
             data = pd.DataFrame()
             if csv_file:
