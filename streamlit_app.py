@@ -9,6 +9,8 @@ import time
 
 @st.cache(show_spinner=False)
 def get_homepage_content(url):
+    if not isinstance(url, str) or url == "":
+        return "L'URL n'est pas valide"
     url = 'http://' + url if 'http://' not in url and 'https://' not in url else url
 
     try:
