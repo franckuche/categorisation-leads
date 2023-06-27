@@ -75,8 +75,7 @@ def main():
         submit_button = st.form_submit_button(label='Soumettre')
     domains = [d.strip() for d in domain_input.split(',')] if domain_input else []
 
-    # Voici où commencerait le code que je vous ai fourni.
-    if all(api_keys):
+    if all(api_keys) and (csv_file or domains):
         data = pd.DataFrame()
         if csv_file:
             try:
@@ -94,27 +93,24 @@ def main():
             domains_data = pd.DataFrame(domains, columns=['domaine du site'])
             data = pd.concat([data, domains_data], ignore_index=True)
 
-        # Stocker tous les lots dans une liste
-        all_batches = []
-
         for i in range(0, len(data), 6):  
-            batch = data.iloc[i:i+6].copy()  # .copy() pour éviter un SettingWithCopyWarning
+            batch = data.iloc[i:i+6]
             batch['contenu home page'] = batch['domaine du site'].apply(get_homepage_content)
             batch['catégorisation du site'] = batch.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
             batch['Business target'] = batch['contenu home page'].apply(lambda x: identify_client_type(x, next(api_key_cycle)))
             batch['Marketing words'] = batch['contenu home page'].apply(lambda x: get_marketing_words(x, next(api_key_cycle)))
-            
-            # Ajouter le lot à la liste de tous les lots
-            all_batches.append(batch)
+
+            if i == 0:
+                data = batch
+            else:
+                data = pd.concat([data, batch])
 
             time.sleep(60)  # Attend 60 secondes
 
-        # Concaténer tous les lots pour obtenir le dataframe final
-        data = pd.concat(all_batches)
         st.dataframe(data)
         st.markdown(get_table_download_link(data), unsafe_allow_html=True)
-
-    # Fin de la section modifiée
+    else:
+        st.error('Veuillez remplir les deux clés API et uploader un CSV ou entrer une URL.')
 
 if __name__ == "__main__":
     main()
