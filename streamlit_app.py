@@ -5,11 +5,11 @@ from bs4 import BeautifulSoup
 import openai
 from itertools import cycle
 import base64
+import time
 
 @st.cache(show_spinner=False)
 def get_homepage_content(url):
     url = 'http://' + url if 'http://' not in url and 'https://' not in url else url
-
     try:
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -17,45 +17,70 @@ def get_homepage_content(url):
     except:
         return "site n'existe plus"
 
-def categorize_site(domain, homepage_content, api_key):
-    if homepage_content == "site n'existe plus":
-        return "site n'existe plus"    
+def categorize_site(domain, home_page_content, api_key):
     openai.api_key = api_key
 
-    prompt_text = f"Tu es un spécialiste du marketing de marque. Pour un client, tu dois trouver à partir du texte de la home page et de ta connaissance du nom de marque à quel secteur d’activité il appartient. Tu peux choisir un à deux secteurs d’activité maximum. Si tu en choisi deux, sépare les avec une barre comme celle-ci : / Si tu ne sais pas ou que tu as un doute, mets “Autres”. Tu ne dois pas ajouter de commentaire, de rédaction ou autre, uniquement le ou les secteurs d’activités que tu as choisi. Voici les secteurs d’activité que tu dois choisir : Alimentaire Animaux Art et culture Associations Automobile B2B Banque / Assurance Cosmétique Divertissement Energie Gaming High Tech Home Immobilier Luxe Prêt-à-porter Retail Restauration Sport équipement Travel. Voici le nom du site : {domain}. Voici le texte de la home page : {homepage_content}"
+    response = openai.Classification.create(
+        search_model="davinci",
+        documents=["E-commerce", "Portfolio", "Educational", "News or Magazine", "Community Forum", "Nonprofit", "Entertainment", "Technology", "Personal Blog", "Web Portal", "Wiki or Knowledge", "Social Media", "Business Brochure"],
+        query=home_page_content,
+    )
 
-    messages = [{"role": "system", "content": prompt_text}]
-    chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
-    return chat.choices[0].message.content
+    return response['choices'][0]['label']
 
-def identify_client_type(homepage_content, api_key):
-    if homepage_content == "site n'existe plus":
-        return "site n'existe plus"
+def identify_client_type(home_page_content, api_key):
     openai.api_key = api_key
 
-    prompt_text = f"Tu es un expert du domaine du marketing. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celui-ci, je souhaite que tu me choisisse l’un de ces termes : B to B (c’est à dire business to business), B to C (c’est à dire business to customers), B to B to C (c’est à dire des entreprises qui commercialisent des biens et des services auprès de sociétés tierces, qui les revendent elles-mêmes au grand public). Tu peux choisir un seul de ces 3 termes. Tu n’a pas le droit d’ajouter des commentaires, fait juste un choix entre : B to B, B to C et B to B to C. Voici le contenus de la homepage : {homepage_content}"
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": home_page_content},
+    ]
 
-    messages = [{"role": "system", "content": prompt_text}]
-    chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
-    return chat.choices[0].message.content
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
+    )
+
+    return response['choices'][0]['message']['content']
+
+def get_marketing_words(home_page_content, api_key):
+    openai.api_key = api_key
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": home_page_content},
+    ]
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
+    )
+
+    return response['choices'][0]['message']['content']
 
 def get_table_download_link(df):
-    csv = df.to_csv(index=False, encoding='utf-8-sig')  # Explicitly encode to UTF-8
-    b64 = base64.b64encode(csv.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="output.csv">Télécharger le CSV</a>'
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}">Download csv file</a>'
     return href
 
-def get_marketing_words(homepage_content, api_key):
-    if homepage_content == "site n'existe plus":
-        return "site n'existe plus"
-    openai.api_key = api_key
+def process_in_batches(df, func, api_key_cycle, batch_size, pause):
+    results = []
+    for i in range(0, len(df), batch_size):
+        batch = df[i:i+batch_size]
+        batch_results = func(batch, api_key_cycle)
+        results.extend(batch_results)
+        time.sleep(pause)
+    return results
 
-    prompt_text = f"Tu es un expert en secteur d'activités d'entreprise. Je vais te fournir un texte qui est le contenu d’une homepage de site. A partir de celle-ci, j’ai besoin que tu me catégories la home page en fonction du métier qui est le plus proche du contenu. Tu devras toujours donné ta réponse au masculin. Par exemple, si tu as un contenu lié au métier de professeur, tu dois dire professeur et non professeure tu m'expliques avec une phrase de 3 ou 4 mots maximum l'activité de l'entreprise. Voici le contenus de la homepage : {homepage_content}. Quel est le type de métier relier à cette page ? Donne moi ta réponse en 2-3 mots maximum. Ne met jamais de ponctuation"
-    
-    messages = [{"role": "system", "content": prompt_text}]
-    chat = openai.ChatCompletion.create(model="gpt-4", messages=messages)
-    return chat.choices[0].message.content
+def categorize_batch(batch, api_key_cycle):
+    return batch.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
 
+def identify_client_type_batch(batch, api_key_cycle):
+    return batch['contenu home page'].apply(lambda x: identify_client_type(x, next(api_key_cycle)))
+
+def get_marketing_words_batch(batch, api_key_cycle):
+    return batch['contenu home page'].apply(lambda x: get_marketing_words(x, next(api_key_cycle)))
 
 def main():
     st.title('Scraping et catégorisation des sites web')
@@ -78,25 +103,18 @@ def main():
     if all(api_keys):
         data = pd.DataFrame()
         if csv_file:
-            try:
-                data = pd.read_csv(csv_file, encoding='utf-8')
-            except UnicodeDecodeError:
-                try:
-                    data = pd.read_csv(csv_file, encoding='latin-1') # ou une autre encodage qui pourrait être utilisé
-                    data.to_csv(csv_file, encoding='utf-8', index=False)
-                    data = pd.read_csv(csv_file, encoding='utf-8')
-                except Exception as e:
-                    st.error(f"Impossible de lire le fichier CSV : {e}")
-                    return
+            data = pd.read_csv(csv_file)
+        elif domains:
+            data = pd.DataFrame(domains, columns=['domaine du site'])
 
-        if domains:
-            domains_data = pd.DataFrame(domains, columns=['domaine du site'])
-            data = pd.concat([data, domains_data], ignore_index=True)
+        rate_limit = 18  # limiter à 18 requêtes par minute
+        batch_size = rate_limit
+        pause_time = 60  # pause de 60 secondes
 
         data['contenu home page'] = data['domaine du site'].apply(get_homepage_content)
-        data['catégorisation du site'] = data.apply(lambda row: categorize_site(row['domaine du site'], row['contenu home page'], next(api_key_cycle)), axis=1)
-        data['Business target'] = data['contenu home page'].apply(lambda x: identify_client_type(x, next(api_key_cycle)))
-        data['Marketing words'] = data['contenu home page'].apply(lambda x: get_marketing_words(x, next(api_key_cycle)))
+        data['catégorisation du site'] = process_in_batches(data, categorize_batch, api_key_cycle, batch_size, pause_time)
+        data['Business target'] = process_in_batches(data, identify_client_type_batch, api_key_cycle, batch_size, pause_time)
+        data['Marketing words'] = process_in_batches(data, get_marketing_words_batch, api_key_cycle, batch_size, pause_time)
 
         st.dataframe(data)
         st.markdown(get_table_download_link(data), unsafe_allow_html=True)
