@@ -93,6 +93,8 @@ def main():
             domains_data = pd.DataFrame(domains, columns=['domaine du site'])
             data = pd.concat([data, domains_data], ignore_index=True)
 
+        result = pd.DataFrame()  # Créez un dataframe pour stocker le résultat final
+
         for i in range(0, len(data), 6):  
             batch = data.iloc[i:i+6]
             batch['contenu home page'] = batch['domaine du site'].apply(get_homepage_content)
@@ -100,15 +102,12 @@ def main():
             batch['Business target'] = batch['contenu home page'].apply(lambda x: identify_client_type(x, next(api_key_cycle)))
             batch['Marketing words'] = batch['contenu home page'].apply(lambda x: get_marketing_words(x, next(api_key_cycle)))
 
-            if i == 0:
-                data = batch
-            else:
-                data = pd.concat([data, batch])
+            result = pd.concat([result, batch])  # Ajoutez le batch au dataframe result
 
             time.sleep(60)  # Attend 60 secondes
 
-        st.dataframe(data)
-        st.markdown(get_table_download_link(data), unsafe_allow_html=True)
+        st.dataframe(result)  # Affiche le dataframe result
+        st.markdown(get_table_download_link(result), unsafe_allow_html=True)  # Télécharge le dataframe result
     else:
         st.error('Veuillez remplir les deux clés API et uploader un CSV ou entrer une URL.')
 
